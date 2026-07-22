@@ -1,0 +1,33 @@
+{
+  "name": "Komari Twilight Constellation",
+  "short": "twilight-constellation",
+  "description": "A cinematic twilight network map theme for Komari with adaptive, calibratable node positions.",
+  "version": "1.0.0",
+  "author": "Baiduxc",
+  "preview": "preview.png",
+  "configuration": {
+    "type": "managed",
+    "name": {
+      "en": "Twilight Constellation Settings",
+      "zh-CN": "暮色星图主题设置",
+      "ja": "トワイライト星図テーマ設定"
+    },
+    "data": [
+      {
+        "key": "backgroundImageUrl",
+        "type": "string",
+        "default": "",
+        "name": {
+          "en": "Custom background image URL",
+          "zh-CN": "自定义背景图片 URL",
+          "ja": "カスタム背景画像 URL"
+        },
+        "help": {
+          "en": "Leave empty to use the bundled twilight artwork.",
+          "zh-CN": "留空时使用主题内置的暮色背景图。",
+          "ja": "空欄の場合はテーマ内蔵の背景画像を使用します。"
+        }
+      }
+    ]
+  }
+}
