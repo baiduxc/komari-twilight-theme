@@ -15,6 +15,7 @@ dist/
 dist-ssr/
 *.local
 bundle-analysis.html
+.npm-cache/
 
 # Environment variables
 .env
