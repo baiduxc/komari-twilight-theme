@@ -8,6 +8,12 @@ We use AI to assist with translations. If you find any issues, please let us kno
 How to contribute to Komari translations?
 - Directly PR
 
+
+
+![](https://r2.cdnn.cc/images/2026/07/22/1784686548802-b0e4b0ab919b1bf7.png)
+
+
+
 ## 开发环境配置
 
 > 我不是计科专业的，代码质量可能达不到平均水平，React是边学边写的，在此之前我从未接触过前端开发，请多包涵。
