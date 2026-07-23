@@ -2,8 +2,9 @@
   "name": "Komari Twilight Constellation",
   "short": "twilight-constellation",
   "description": "A cinematic twilight network map theme for Komari with adaptive, calibratable node positions.",
-  "version": "1.0.0",
+  "version": "1.3.1",
   "author": "Baiduxc",
+  "url": "https://github.com/baiduxc/komari-twilight-theme",
   "preview": "preview.png",
   "configuration": {
     "type": "managed",

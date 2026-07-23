@@ -42,3 +42,39 @@
 - P3: add more city aliases over time for unusual custom region names.
 
 final result: passed
+
+## Version 1.3.0 restrained twilight map verification
+
+- Source visual truth: generated `public/twilight-world-v3.png`, 1774 × 887 (exact 2:1), using a restrained semi-realistic twilight palette with no anime treatment, labels, UI, grid, or polar regions.
+- Composition evidence: Asia and Australia occupy the left, the Pacific remains central, and the Americas stand upright on the right.
+- Browser evidence: the local Komari preview loaded the v3 asset successfully; the rendered artwork plane measured 1400 × 700, exactly `2.0`.
+- Coordinate evidence: Singapore rendered at the new factory anchor `(13%, 56%)` in the same artwork-relative coordinate plane used by the background, paths, and markers.
+- Responsive/calibration architecture is unchanged: positions remain percentages of the source artwork, saved by node UUID, and can be reset to factory defaults.
+- The theme preview image was regenerated from the verified v3 page.
+- P3: bundled city positions are temporary visual anchors and will be replaced by the user's curated manual selections.
+
+final result: passed
+
+## Version 1.2.0 artistic map verification
+
+- Source visual truth: generated `public/twilight-world-v2.png`, 1774 × 887 (exact 2:1), with Asia left, Pacific center and upright Americas right.
+- Implementation evidence: in-app Browser capture at the default desktop viewport; the source artwork, marker layer and network canvas shared one 2:1 image plane.
+- Responsive evidence: at 1080 × 1920 the image plane remained exactly `2.0`; Singapore remained normalized at `(23%, 59%)`.
+- Calibration evidence: the “校准位置” control opened the drag instruction, and persistence/reset behavior remains unchanged.
+- Fonts, spacing, navy/cyan/amber tokens, source-image sharpness and single-line node labels were inspected.
+- P3: temporary demo positions are illustrative; curated factory positions will be replaced with the user's manually selected coordinates.
+
+final result: passed
+
+## Version 1.1.0 verification
+
+- Source visual truth: approved Twilight Constellation art direction and `public/twilight-earth.png` for the detail surface.
+- Homepage evidence: in-app Browser capture at 1280 × 720, showing the NASA 3600 × 1800 equirectangular base and generated 2:1 atmosphere overlay.
+- Projection evidence: Singapore rendered at `(78.8388%, 49.2488%)`, Tokyo at `(88.7917%, 30.1799%)`, Frankfurt at `(52.4117%, 22.1606%)`, matching the standard formula.
+- Detail evidence: `/instance/demo-sin` at 1280 × 720; left content measured 960 px and the right node list 320 px.
+- Typography, spacing, navy/cyan/amber tokens, image quality and Chinese monitoring copy were inspected.
+- Right-side node selection navigated from `demo-sin` to `demo-sin-2`; two responsive chart surfaces rendered.
+- Console only contained expected RPC/WebSocket failures from the standalone preview without a Komari backend; no rendering exceptions.
+- P3: lower configuration content naturally scrolls on short 720 px viewports.
+
+final result: passed

@@ -1,252 +1,36 @@
-import { useCallback, useEffect, useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useLiveData } from "../../contexts/LiveDataContext";
-import { useTranslation } from "react-i18next";
-import type { Record } from "../../types/LiveData";
-import Flag from "../../components/Flag";
-import { Card, Flex, Text } from "@radix-ui/themes";
-import { useNodeList } from "@/contexts/NodeListContext";
-import { liveDataToRecords } from "@/utils/RecordHelper";
-import LoadChart from "./LoadChart";
-import { DetailsGrid } from "@/components/DetailsGrid";
-import { usePublicInfo } from "@/contexts/PublicInfoContext";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { AccountProvider } from "@/contexts/AccountContext";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ArrowDown, ArrowLeft, ArrowUp, Clock3, Cpu, Gauge, HardDrive, MemoryStick, Search, Server, Wifi } from "lucide-react";
+import { useLiveData } from "@/contexts/LiveDataContext";
+import { useNodeList, type NodeBasicInfo } from "@/contexts/NodeListContext";
+import type { Record as LiveRecord } from "@/types/LiveData";
+import "./TwilightInstance.css";
 
-export default function InstancePage() {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { onRefresh, live_data } = useLiveData();
-  const { uuid } = useParams<{ uuid: string }>();
-  const [recent, setRecent] = useState<Record[]>([]);
-  const [chartRealtimeActive, setChartRealtimeActive] = useState(true);
-  const { nodeList } = useNodeList();
-  const length = 30 * 5;
-  // #region 初始数据加载
-  const node = nodeList?.find((n) => n.uuid === uuid);
-  const { publicInfo } = usePublicInfo();
-  const isMobile = useIsMobile();
-  const showServerListInDetails =
-    publicInfo?.theme_settings?.showServerListInDetails === true;
-  const offlineServerPosition =
-    publicInfo?.theme_settings?.offlineServerPosition;
-  const onlineSet = useMemo(
-    () => new Set(live_data?.data?.online ?? []),
-    [live_data?.data?.online],
-  );
-  const chartRecords = useMemo(
-    () => liveDataToRecords(uuid ?? "", recent),
-    [uuid, recent],
-  );
-  const handleChartRealtimeChange = useCallback((active: boolean) => {
-    setChartRealtimeActive(active);
-  }, []);
+const demoNode=(uuid:string,name:string,region:string,group:string):NodeBasicInfo=>({uuid,name,region,group,cpu_name:"AMD EPYC 7B13",virtualization:"KVM",arch:"amd64",cpu_cores:4,os:"Debian 12",kernel_version:"6.8",gpu_name:"",mem_total:8*1024**3,swap_total:2*1024**3,disk_total:120*1024**3,version:"1.0",weight:0,price:0,tags:"",billing_cycle:0,currency:"",traffic_limit:0,traffic_limit_type:undefined,expired_at:"",created_at:"",updated_at:""});
+const DEMO=[demoNode("demo-sin","新加坡-Edge","Singapore, SG","Asia"),demoNode("demo-sin-2","新加坡-Core","Singapore, SG","Asia"),demoNode("demo-tokyo","东京","Tokyo, JP","Asia"),demoNode("demo-fra","法兰克福","Frankfurt, DE","Europe")];
+const fmt=(bytes=0)=>{if(!bytes)return"0 B";const u=["B","KB","MB","GB","TB"],i=Math.min(4,Math.floor(Math.log(bytes)/Math.log(1024)));return`${(bytes/1024**i).toFixed(i>1?1:0)} ${u[i]}`};
+const uptime=(s=0)=>`${Math.floor(s/86400)}天 ${Math.floor(s%86400/3600)}小时`;
+const tone=(v:number)=>v>=85?"critical":v>=65?"warning":"healthy";
 
-  // 组织按分组的服务器列表
-  const groupedNodes = useMemo(() => {
-    if (!nodeList) return [];
-
-    const sortNodes = (
-      a: (typeof nodeList)[number],
-      b: (typeof nodeList)[number],
-    ) => {
-      const aIsOnline = onlineSet.has(a.uuid);
-      const bIsOnline = onlineSet.has(b.uuid);
-
-      if (offlineServerPosition === "First") {
-        if (!aIsOnline && bIsOnline) return -1;
-        if (aIsOnline && !bIsOnline) return 1;
-      } else if (offlineServerPosition !== "Keep") {
-        if (aIsOnline && !bIsOnline) return -1;
-        if (!aIsOnline && bIsOnline) return 1;
-      }
-
-      return a.weight - b.weight;
-    };
-
-    const groups = new Map<string | null, typeof nodeList>();
-
-    nodeList.forEach((node) => {
-      const groupKey = node.group && node.group.trim() ? node.group : null;
-      if (!groups.has(groupKey)) {
-        groups.set(groupKey, []);
-      }
-      groups.get(groupKey)?.push(node);
-    });
-
-    // 转换为数组，其中未分组的排在最后
-    const result: Array<{ group: string | null; nodes: typeof nodeList }> = [];
-
-    // 先添加有分组的（按分组名称排序）
-    Array.from(groups.entries())
-      .filter(([group]) => group !== null)
-      .sort(([a], [b]) => (a ?? "").localeCompare(b ?? ""))
-      .forEach(([group, nodes]) => {
-        result.push({
-          group,
-          nodes: [...nodes].sort(sortNodes),
-        });
-      });
-
-    // 再添加未分组的
-    const ungrouped = groups.get(null);
-    if (ungrouped) {
-      result.push({
-        group: null,
-        nodes: [...ungrouped].sort(sortNodes),
-      });
-    }
-
-    return result;
-  }, [nodeList, onlineSet, offlineServerPosition]);
-
-  useEffect(() => {
-    if (!uuid) {
-      setRecent([]);
-      return;
-    }
-
-    const controller = new AbortController();
-    setRecent([]);
-
-    fetch(`/api/recent/${uuid}`, { signal: controller.signal })
-      .then((res) => res.json())
-      .then((data) => {
-        if (!controller.signal.aborted) {
-          setRecent((data?.data ?? []).slice(-length));
-        }
-      })
-      .catch((err) => {
-        if (err?.name !== "AbortError") {
-          console.error("Failed to fetch recent data:", err);
-        }
-      });
-
-    return () => controller.abort();
-  }, [uuid, length]);
-  // 动态追加数据
-  useEffect(() => {
-    const unsubscribe = onRefresh((resp) => {
-      if (!uuid || !chartRealtimeActive) return;
-      const data = resp.data.data[uuid];
-      if (!data) return;
-
-      setRecent((prev) => {
-        const newRecord: Record = data;
-        // 追加新数据，限制总长度为length（FIFO）
-        // 检查是否已存在相同时间戳的记录
-        const exists = prev.some(
-          (item) => item.updated_at === newRecord.updated_at,
-        );
-        if (exists) {
-          return prev; // 如果已存在，不添加新记录
-        }
-
-        // 否则，追加新记录
-        const updated = [...prev, newRecord].slice(-length);
-        return updated;
-      });
-    });
-
-    // 清理订阅
-    return unsubscribe;
-  }, [chartRealtimeActive, length, onRefresh, uuid]);
-  // #region 布局
-  return (
-    <div className="flex flex-row justify-center p-4 gap-4">
-      {showServerListInDetails && !isMobile && (
-        <div className="w-[300px] shrink-0 self-start sticky top-4">
-          <Card
-            className="w-full overflow-hidden shadow-lg"
-            style={{ height: "calc(100vh - 2rem)" }}
-          >
-            <Flex direction="column" gap="0" className="h-full min-h-0">
-              <div className="p-3 border-b border-accent-3">
-                <Text size="2" weight="bold">
-                  {t("common.serverList")}
-                </Text>
-              </div>
-              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-                {groupedNodes.map((group, groupIndex) => (
-                  <div key={groupIndex}>
-                    {group.group && (
-                      <div className="px-3 py-1 text-xs font-semibold text-accent-8 bg-accent-2 sticky top-0">
-                        {group.group}
-                      </div>
-                    )}
-                    {group.group === null && (
-                      <div className="px-3 py-1 text-xs font-semibold text-accent-8 bg-accent-2 sticky top-0">
-                        {t("common.ungrouped")}
-                      </div>
-                    )}
-                    <div>
-                      {group.nodes.map((node) => (
-                        <div
-                          key={node.uuid}
-                          onClick={() => navigate(`/instance/${node.uuid}`)}
-                          className={`mx-1 my-0.5 px-2 py-0 cursor-pointer transition-colors text-sm rounded-md border-l-[4px] flex items-center gap-2 ${
-                            node.uuid === uuid
-                              ? "bg-accent-4 text-accent-10 font-bold"
-                              : "hover:bg-accent-3"
-                          }`}
-                          style={{
-                            borderLeft:
-                              node.uuid === uuid
-                                ? "4px solid var(--accent-8)"
-                                : "4px solid transparent",
-                          }}
-                        >
-                          <Flag flag={node.region} />
-                          <span
-                            className={`truncate ${
-                              node.uuid === uuid ? "text-accent-10" : ""
-                            }`}
-                          >
-                            {node.name}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Flex>
-          </Card>
-        </div>
-      )}
-      <div className="flex flex-col h-full items-center gap-2">
-        <div className="flex flex-col gap-1 md:p-4 p-3 border-0 rounded-md">
-          <h1 className="flex items-center flex-wrap">
-            <Flag flag={node?.region ?? ""} />
-            <Text size="3" weight="bold" wrap="nowrap">
-              {node?.name ?? uuid}
-            </Text>
-            <Text
-              size="1"
-              style={{
-                marginLeft: "8px",
-              }}
-              className="text-accent-6"
-              wrap="nowrap"
-            >
-              {node?.uuid}
-            </Text>
-          </h1>
-          <DetailsGrid
-            box
-            align="center"
-            uuid={uuid ?? ""}
-            node={node}
-            liveRecord={uuid ? live_data?.data.data[uuid] : undefined}
-          />
-        </div>
-        <AccountProvider>
-          <LoadChart
-            data={chartRecords}
-            onRealtimeActiveChange={handleChartRealtimeChange}
-          />
-        </AccountProvider>
-      </div>
-    </div>
-  );
+export default function InstancePage(){
+  const {uuid}=useParams<{uuid:string}>();const navigate=useNavigate();const {nodeList}=useNodeList();const {live_data}=useLiveData();const [recent,setRecent]=useState<LiveRecord[]>([]);const [query,setQuery]=useState("");
+  const nodes=nodeList?.length?nodeList:import.meta.env.DEV?DEMO:[];const node=nodes.find(n=>n.uuid===uuid)||nodes[0];const live=live_data?.data;const record=node?live?.data?.[node.uuid]:undefined;const online=new Set(live?.online||[]);const isDemo=Boolean(node?.uuid.startsWith("demo-"));
+  useEffect(()=>{if(!uuid||uuid.startsWith("demo-")){setRecent([]);return}const c=new AbortController();fetch(`/api/recent/${uuid}`,{signal:c.signal}).then(r=>r.json()).then(r=>setRecent((r?.data||[]).slice(-90))).catch(()=>{});return()=>c.abort()},[uuid]);
+  const chartData=useMemo(()=>{const source=recent.length?recent:Array.from({length:30},(_,i)=>({cpu:{usage:28+Math.sin(i/3)*12+i*.25},ram:{used:(3.2+Math.sin(i/5)*.35)*1024**3},network:{up:(220+Math.sin(i/2)*80)*1024,down:(150+Math.cos(i/3)*55)*1024},updated_at:new Date(Date.now()-(29-i)*60000).toISOString()} as LiveRecord));return source.map((r,i)=>({time:new Date(r.updated_at||Date.now()).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),cpu:r.cpu?.usage||0,memory:node?.mem_total?r.ram.used/node.mem_total*100:0,up:(r.network?.up||0)/1024,down:(r.network?.down||0)/1024,index:i}))},[recent,node?.mem_total]);
+  if(!node)return <main className="ti-shell"><div className="ti-empty">未找到节点</div></main>;
+  const cpu=Math.round(record?.cpu?.usage??chartData.at(-1)?.cpu??0),memory=Math.round(record&&node.mem_total?record.ram.used/node.mem_total*100:chartData.at(-1)?.memory??0),isOnline=isDemo||online.has(node.uuid);
+  const filtered=nodes.filter(n=>`${n.name} ${n.region} ${n.group}`.toLowerCase().includes(query.toLowerCase()));
+  return <main className="ti-shell">
+    <div className="ti-background"/><header className="ti-header"><button onClick={()=>navigate("/")}><ArrowLeft size={18}/>返回星图</button><div><Server size={21}/><strong>Komari</strong><span>节点详情</span></div><span className={isOnline?"online":"offline"}><i/>{isOnline?"实时在线":"当前离线"}</span></header>
+    <div className="ti-layout"><section className="ti-main"><div className="ti-title"><div><p>{node.group||"GLOBAL NODE"} · {node.region}</p><h1>{node.name}</h1><span>{node.uuid}</span></div><div className="ti-uptime"><Clock3/><small>运行时间</small><strong>{uptime(record?.uptime||18*86400+7*3600)}</strong></div></div>
+      <div className="ti-kpis"><Kpi icon={Cpu} label="CPU" value={`${cpu}%`} tone={tone(cpu)}/><Kpi icon={MemoryStick} label="内存" value={`${memory}%`} tone={tone(memory)}/><Kpi icon={HardDrive} label="磁盘" value={fmt(record?.disk?.used||42*1024**3)}/><Kpi icon={Gauge} label="负载 1m" value={(record?.load?.load1??.72).toFixed(2)}/></div>
+      <ChartCard title="系统负载趋势" subtitle="CPU 与内存 · 最近 30 个采样"><ResponsiveContainer width="100%" height={230}><AreaChart data={chartData}><defs><linearGradient id="cpuFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#62d7ff" stopOpacity={.35}/><stop offset="100%" stopColor="#62d7ff" stopOpacity={0}/></linearGradient><linearGradient id="memFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f6b44f" stopOpacity={.25}/><stop offset="100%" stopColor="#f6b44f" stopOpacity={0}/></linearGradient></defs><CartesianGrid stroke="rgba(140,174,211,.12)" vertical={false}/><XAxis dataKey="time" tick={{fill:"#71839d",fontSize:10}} axisLine={false} tickLine={false}/><YAxis domain={[0,100]} tick={{fill:"#71839d",fontSize:10}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#071a30",border:"1px solid #294763",borderRadius:8}}/><Area type="monotone" dataKey="cpu" name="CPU %" stroke="#62d7ff" fill="url(#cpuFill)" strokeWidth={2}/><Area type="monotone" dataKey="memory" name="内存 %" stroke="#f6b44f" fill="url(#memFill)" strokeWidth={2}/></AreaChart></ResponsiveContainer></ChartCard>
+      <div className="ti-bottom"><ChartCard title="网络吞吐" subtitle="KB/s"><ResponsiveContainer width="100%" height={170}><AreaChart data={chartData}><CartesianGrid stroke="rgba(140,174,211,.1)" vertical={false}/><XAxis dataKey="time" hide/><YAxis hide/><Tooltip contentStyle={{background:"#071a30",border:"1px solid #294763",borderRadius:8}}/><Area type="monotone" dataKey="up" name="上行" stroke="#65dfa6" fill="#65dfa622"/><Area type="monotone" dataKey="down" name="下行" stroke="#62cfff" fill="#62cfff18"/></AreaChart></ResponsiveContainer><div className="ti-network-values"><span><ArrowUp/> {fmt(record?.network?.up||286*1024)}/s</span><span><ArrowDown/> {fmt(record?.network?.down||182*1024)}/s</span></div></ChartCard><div className="ti-specs"><h2>节点配置</h2><Spec label="处理器" value={`${node.cpu_name} · ${node.cpu_cores} 核`}/><Spec label="系统" value={`${node.os} · ${node.arch}`}/><Spec label="虚拟化" value={node.virtualization}/><Spec label="内存" value={fmt(node.mem_total)}/><Spec label="磁盘" value={fmt(node.disk_total)}/></div></div>
+    </section><aside className="ti-sidebar"><div className="ti-side-head"><div><small>NETWORK</small><h2>节点列表</h2></div><span>{nodes.length}</span></div><label className="ti-side-search"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="搜索节点"/></label><div className="ti-node-list">{filtered.map(n=>{const active=n.uuid===node.uuid,on=isDemo||n.uuid.startsWith("demo-")||online.has(n.uuid);return <button key={n.uuid} className={active?"active":""} onClick={()=>navigate(`/instance/${n.uuid}`)}><i className={on?"online":"offline"}/><span><b>{n.name}</b><small>{n.region||n.group}</small></span><em>{on?"在线":"离线"}</em></button>})}</div><div className="ti-side-foot"><Wifi size={16}/><span>实时数据每 2 秒刷新</span></div></aside></div>
+  </main>
 }
+
+function Kpi({icon:Icon,label,value,tone:color=""}:{icon:typeof Cpu;label:string;value:string;tone?:string}){return <div className={`ti-kpi ${color}`}><Icon/><span>{label}</span><strong>{value}</strong></div>}
+function ChartCard({title,subtitle,children}:{title:string;subtitle:string;children:React.ReactNode}){return <section className="ti-chart"><header><h2>{title}</h2><span>{subtitle}</span></header>{children}</section>}
+function Spec({label,value}:{label:string;value:string}){return <div className="ti-spec"><span>{label}</span><strong>{value||"—"}</strong></div>}

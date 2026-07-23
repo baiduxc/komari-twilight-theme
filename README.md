@@ -1,5 +1,14 @@
 # Komari Web UI
 
+## Twilight Constellation map calibration
+
+The home map is an artistic 2:1 panorama rather than a geographic projection.
+Node positions are stored as percentages of the source image, so they remain
+stable through responsive cover scaling. Use the on-page calibration mode to
+drag locations; coordinates persist by node UUID in the current browser.
+
+Curated factory positions can be added later from manually selected points.
+
 参与翻译Komari？
 - 直接提PR
 
