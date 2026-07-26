@@ -16,7 +16,7 @@ on:
     types:
       - komari-release-published
   schedule:
-    - cron: "17 * * * *"
+    - cron: "17 2 * * *"
 
 permissions:
   contents: write
